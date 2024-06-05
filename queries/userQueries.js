@@ -18,7 +18,37 @@ const createUser = async (userDetails) => {
   return result.rows[0];
 };
 
+// Update user profile
+const updateUser = async (userId, userDetails) => {
+  const { first_name, last_name, email, phone, address, city, state, zip_code } = userDetails;
+  const query = `
+    UPDATE users
+    SET first_name = $1, last_name = $2, email = $3, phone = $4, address = $5, city = $6, state = $7, zip_code = $8
+    WHERE user_id = $9
+    RETURNING *;`;
+  const values = [first_name, last_name, email, phone, address, city, state, zip_code, userId];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
+
+// Delete a user
+const deleteUser = async (userId) => {
+  const query = 'DELETE FROM users WHERE user_id = $1 RETURNING *;';
+  const values = [userId];
+  const { rows } = await pool.query(query, values);
+  return rows[0];
+};
+
 module.exports = {
   getUsers,
-  createUser
+  createUser,
+  updateUser,
+  deleteUser
+};
+
+module.exports = {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser
 };
