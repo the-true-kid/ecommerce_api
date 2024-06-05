@@ -39,16 +39,22 @@ const deleteUser = async (userId) => {
   return rows[0];
 };
 
-module.exports = {
-  getUsers,
-  createUser,
-  updateUser,
-  deleteUser
+// Retrieve a single user by ID
+const getUserById = async (userId) => {
+  const query = 'SELECT * FROM users WHERE user_id = $1';
+  const values = [userId];
+  try {
+      const { rows } = await pool.query(query, values);
+      return rows[0]; // Return the first row which is the user
+  } catch (err) {
+      throw err; // It's better to handle errors in route to send proper HTTP response
+  }
 };
 
 module.exports = {
-  getUsers,
   createUser,
+  getUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  getUserById 
 };

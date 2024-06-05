@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator'); // Required for validation
-const { createUser, getUsers, updateUser, deleteUser } = require('../queries/userQueries');
+const { createUser, getUsers, updateUser, deleteUser, getUserById } = require('../queries/userQueries');
 const passport = require('passport');
 
 // Middleware to check if the user is logged in and authorized
@@ -89,6 +89,20 @@ router.delete('/:userId', isAuthenticatedAndAuthorized, async (req, res) => {
         res.json({ message: 'User deleted successfully', user });
     } catch (error) {
         res.status(500).json({ error: "Failed to delete user", details: error.message });
+    }
+});
+
+// Get a single user
+router.get('/:userId', isAuthenticatedAndAuthorized, async (req, res) => {
+    try {
+        const user = await getUserById(req.params.userId);
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve user', details: error.message });
     }
 });
 
