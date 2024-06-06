@@ -22,21 +22,28 @@ const createCart = async (userId) => {
     }
 };
 
-const addItemToCart = async (userId, productId, quantity) => {
-    const query = `
-        INSERT INTO public.cartitems (cart_id, product_id, quantity)
-        SELECT cart_id, $2, $3 FROM public.cart WHERE user_id = $1
-        ON CONFLICT (cart_id, product_id) DO UPDATE SET quantity = cartitems.quantity + EXCLUDED.quantity
-        RETURNING *;
-    `;
-    try {
-        const { rows } = await pool.query(query, [userId, productId, quantity]);
-        return rows;  // Returns the updated cart items
-    } catch (err) {
-        console.error('Error adding item to cart', err);
-        throw err;
+async function addItemToCart(userId, productId, quantity) {
+    const cart = await getCartByUserId(userId);
+    let cartId;
+
+    if (!cart) {
+        const newCart = await createCart(userId);
+        cartId = newCart.cart_id;
+    } else {
+        cartId = cart.cart_id;
     }
-};
+
+    const res = await client.query(
+        `INSERT INTO public.cart_items (cart_id, product_id, quantity)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (cart_id, product_id)
+         DO UPDATE SET quantity = public.cart_items.quantity + EXCLUDED.quantity
+         RETURNING *`,
+        [cartId, productId, quantity]
+    );
+
+    return res.rows[0];
+}
 
 const removeItemFromCart = async (userId, productId) => {
     const query = `
@@ -61,49 +68,66 @@ const clearCart = async (userId) => {
     }
 };
 
-const checkoutCart = async (cartId, userId) => {
-    const client = await pool.connect();
+
+async function checkoutCart(cartId) {
     try {
-        await client.query('BEGIN');  // Start transaction
+        // Fetch the user_id from the cart table
+        const userRes = await pool.query('SELECT user_id FROM public.cart WHERE cart_id = $1', [cartId]);
+        const user = userRes.rows[0];
 
-        // Create a new order entry
-        const createOrderQuery = `
-            INSERT INTO public.orders (user_id, status, total_amount)
-            SELECT user_id, 'Pending', SUM(quantity * price) FROM public.cartitems
-            JOIN public.products ON cartitems.product_id = products.product_id
-            WHERE cart_id = $1
-            GROUP BY user_id
-            RETURNING order_id;
-        `;
-        const orderResult = await client.query(createOrderQuery, [cartId]);
-        const orderId = orderResult.rows[0].order_id;
+        if (!user) {
+            throw new Error('Cart not found');
+        }
 
-        // Transfer cart items to order items
-        const transferItemsQuery = `
-            INSERT INTO public.orderitems (order_id, product_id, quantity, price)
-            SELECT $1, product_id, quantity, price FROM public.cartitems
-            JOIN public.products ON cartitems.product_id = products.product_id
-            WHERE cart_id = $2;
-        `;
-        await client.query(transferItemsQuery, [orderId, cartId]);
+        const userId = user.user_id;
 
-        // Optionally, update inventory
-        // const updateInventoryQuery = `UPDATE public.products SET stock = stock - quantity WHERE product_id IN (SELECT product_id FROM cartitems WHERE cart_id = $1)`;
-        // await client.query(updateInventoryQuery, [cartId]);
+        // Fetch cart items
+        const cartItemsRes = await pool.query(
+            'SELECT * FROM public.cartitems WHERE cart_id = $1',
+            [cartId]
+        );
+        const cartItems = cartItemsRes.rows;
 
-        // Clear the cart (if needed)
-        const clearCartQuery = 'DELETE FROM public.cartitems WHERE cart_id = $1';
-        await client.query(clearCartQuery, [cartId]);
+        if (cartItems.length === 0) {
+            throw new Error('Cart is empty');
+        }
 
-        await client.query('COMMIT');  // Commit the transaction
-        return { orderId, status: 'Checkout successful' };  // Return the new order ID and status
+        // Calculate total amount
+        const totalAmount = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+
+        // Fetch user's addresses from users table
+        const userAddressRes = await pool.query(
+            'SELECT address AS shipping_address, address AS billing_address FROM public.users WHERE user_id = $1',
+            [userId]
+        );
+        const userAddress = userAddressRes.rows[0];
+
+        // Create order
+        const orderRes = await pool.query(
+            `INSERT INTO public.orders (user_id, status, total_amount, shipping_address, billing_address)
+             VALUES ($1, 'Pending', $2, $3, $4) RETURNING *`,
+            [userId, totalAmount, userAddress.shipping_address, userAddress.billing_address]
+        );
+        const order = orderRes.rows[0];
+
+        // Add items to order items
+        for (const item of cartItems) {
+            await pool.query(
+                `INSERT INTO public.orderitems (order_id, product_id, quantity, price)
+                 VALUES ($1, $2, $3, $4)`,
+                [order.order_id, item.product_id, item.quantity, item.price]
+            );
+        }
+
+        // Clear cart
+        await pool.query('DELETE FROM public.cartitems WHERE cart_id = $1', [cartId]);
+
+        return order;
     } catch (err) {
-        await client.query('ROLLBACK');  // Rollback transaction on error
+        console.error('Error during checkout', err);
         throw err;
-    } finally {
-        client.release();  // Release client back to the pool
     }
-};
+}
 
 
 module.exports = {
