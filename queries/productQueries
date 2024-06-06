@@ -13,20 +13,19 @@ const getProductById = async (productId) => {
     }
 };
 
-// Retrieve products by category ID
-const getProductsByCategory = async (categoryId) => {
-    const query = 'SELECT * FROM products WHERE category_id = $1';
-    try {
-        const { rows } = await pool.query(query, [categoryId]);
-        return rows;
-    } catch (err) {
-        console.error('Error retrieving products by category:', err.message);
-        throw err; // Rethrow the error to be handled in the route
-    }
-};
+async function getProductsByCategory(category) {
+    const res = await pool.query('SELECT * FROM public.products WHERE category = $1', [category]);
+    return res.rows;
+}
+
+async function getAllProducts() {
+    const res = await pool.query('SELECT * FROM public.products');
+    return res.rows;
+}
 
 module.exports = {
     getProductById,
-    getProductsByCategory
+    getProductsByCategory,
+    getAllProducts
 };
 
