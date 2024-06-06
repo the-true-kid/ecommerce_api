@@ -25,7 +25,7 @@ app.use(passport.session());
 
 // Routes setup
 app.use('/api/users', require('./routes/userRoutes'));
-// Other routes here...
+app.use('/api/products', require('./routes/productRoutes'))
 
 app.get('/', (req, res) => {
   res.send('Hello World!');

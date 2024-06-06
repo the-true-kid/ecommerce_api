@@ -1,4 +1,4 @@
-const { pool } = require('../db');  // Assuming you export the pool from a central db file
+const { pool } = require('../db');  
 const bcrypt = require('bcryptjs');
 
 // Get all users

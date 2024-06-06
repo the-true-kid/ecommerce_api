@@ -1,0 +1,32 @@
+const { pool } = require('../db');
+
+// Retrieve a single product by ID
+const getProductById = async (productId) => {
+    const query = 'SELECT * FROM products WHERE product_id = $1';
+    const values = [productId];
+    try {
+        const { rows } = await pool.query(query, values);
+        return rows[0]; // Return the first row which is the product
+    } catch (err) {
+        console.error('Error retrieving product by ID:', err.message);
+        throw err; // Rethrow the error to be handled in the route
+    }
+};
+
+// Retrieve products by category ID
+const getProductsByCategory = async (categoryId) => {
+    const query = 'SELECT * FROM products WHERE category_id = $1';
+    try {
+        const { rows } = await pool.query(query, [categoryId]);
+        return rows;
+    } catch (err) {
+        console.error('Error retrieving products by category:', err.message);
+        throw err; // Rethrow the error to be handled in the route
+    }
+};
+
+module.exports = {
+    getProductById,
+    getProductsByCategory
+};
+
