@@ -61,11 +61,57 @@ const clearCart = async (userId) => {
     }
 };
 
+const checkoutCart = async (cartId, userId) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');  // Start transaction
+
+        // Create a new order entry
+        const createOrderQuery = `
+            INSERT INTO public.orders (user_id, status, total_amount)
+            SELECT user_id, 'Pending', SUM(quantity * price) FROM public.cartitems
+            JOIN public.products ON cartitems.product_id = products.product_id
+            WHERE cart_id = $1
+            GROUP BY user_id
+            RETURNING order_id;
+        `;
+        const orderResult = await client.query(createOrderQuery, [cartId]);
+        const orderId = orderResult.rows[0].order_id;
+
+        // Transfer cart items to order items
+        const transferItemsQuery = `
+            INSERT INTO public.orderitems (order_id, product_id, quantity, price)
+            SELECT $1, product_id, quantity, price FROM public.cartitems
+            JOIN public.products ON cartitems.product_id = products.product_id
+            WHERE cart_id = $2;
+        `;
+        await client.query(transferItemsQuery, [orderId, cartId]);
+
+        // Optionally, update inventory
+        // const updateInventoryQuery = `UPDATE public.products SET stock = stock - quantity WHERE product_id IN (SELECT product_id FROM cartitems WHERE cart_id = $1)`;
+        // await client.query(updateInventoryQuery, [cartId]);
+
+        // Clear the cart (if needed)
+        const clearCartQuery = 'DELETE FROM public.cartitems WHERE cart_id = $1';
+        await client.query(clearCartQuery, [cartId]);
+
+        await client.query('COMMIT');  // Commit the transaction
+        return { orderId, status: 'Checkout successful' };  // Return the new order ID and status
+    } catch (err) {
+        await client.query('ROLLBACK');  // Rollback transaction on error
+        throw err;
+    } finally {
+        client.release();  // Release client back to the pool
+    }
+};
+
+
 module.exports = {
     getCartByUserId,
     createCart,
     addItemToCart,
     removeItemFromCart,
-    clearCart
+    clearCart,
+    checkoutCart
 };
 
