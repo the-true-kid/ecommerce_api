@@ -33,8 +33,17 @@ const setupPassport = () => {
   });
 
   passport.deserializeUser(async (id, done) => {
-    const res = await pool.query('SELECT * FROM users WHERE user_id = $1', [id]);
-    done(null, res.rows[0]);
+    try {
+      const res = await pool.query('SELECT * FROM users WHERE user_id = $1', [id]);
+      if (res.rows.length > 0) {
+        const user = res.rows[0];
+        done(null, user);
+      } else {
+        done(new Error('User not found'), null);
+      }
+    } catch (err) {
+      done(err, null);
+    }
   });
 };
 

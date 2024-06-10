@@ -1,27 +1,30 @@
-const { pool } = require('pg');
+const { pool } = require('../db');
 
-
-async function getOrdersByUserId(userId) {
+const getOrdersByUserId = async (userId) => {
+    const query = `SELECT * FROM public.orders WHERE user_id = $1`;
     try {
-        const res = await pool.query('SELECT * FROM public.orders WHERE user_id = $1', [userId]);
-        return res.rows;
+        console.log('Running query with userId:', userId); // Debugging: Ensure userId is correct
+        const { rows } = await pool.query(query, [userId]);
+        return rows;
     } catch (err) {
-        console.error('Error executing query', err);
+        console.error('Error getting orders by user ID', err);
         throw err;
     }
-}
+};
 
-async function getOrderById(userId, orderId) {
+const getOrderById = async (userId, orderId) => {
+    const query = `SELECT * FROM public.orders WHERE user_id = $1 AND order_id = $2`;
     try {
-        const res = await pool.query('SELECT * FROM public.orders WHERE user_id = $1 AND order_id = $2', [userId, orderId]);
-        return res.rows[0];
+        console.log('Running query with userId:', userId, 'orderId:', orderId); // Debugging: Ensure userId and orderId are correct
+        const { rows } = await pool.query(query, [userId, orderId]);
+        return rows[0];
     } catch (err) {
-        console.error('Error executing query', err);
+        console.error('Error getting order by ID', err);
         throw err;
     }
-}
+};
 
 module.exports = {
     getOrdersByUserId,
-    getOrderById
+    getOrderById,
 };

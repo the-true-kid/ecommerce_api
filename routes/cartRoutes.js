@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { getCartByUserId, createCart, addItemToCart, removeItemFromCart, clearCart, checkoutCart } = require('../queries/cartQueries');
-const { passport } = require('../queries/authQueries');  // Adjust path as needed
+const { passport } = require('../queries/authQueries');
 
-// Middleware to ensure the user is authenticated for all cart actions
 router.use(passport.authenticate('session'));
 
 router.get('/', async (req, res) => {
@@ -19,7 +18,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-    const { productId, quantity } = req.body;  // Ensure that productId and quantity are passed
+    const { productId, quantity } = req.body;
     try {
         const updatedCart = await addItemToCart(req.user.user_id, productId, quantity);
         res.json(updatedCart);
@@ -29,7 +28,7 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/', async (req, res) => {
-    const { productId } = req.body;  // Ensure that productId is passed
+    const { productId } = req.body;
     try {
         await removeItemFromCart(req.user.user_id, productId);
         res.status(204).send();
@@ -46,18 +45,15 @@ router.delete('/clear', async (req, res) => {
         res.status(500).json({ message: "Failed to clear cart", error: error.message });
     }
 });
-// Checkout endpoint
+
 router.post('/:cartId/checkout', async (req, res) => {
     const { cartId } = req.params;
-
     try {
-        const result = await checkoutCart(cartId); // Only pass cartId
+        const result = await checkoutCart(cartId);
         res.status(200).json({ message: "Checkout successful", details: result });
     } catch (error) {
         res.status(500).json({ message: "Checkout process failed", error: error.message });
     }
 });
-
-
 
 module.exports = router;

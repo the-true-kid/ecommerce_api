@@ -1,5 +1,6 @@
 const { pool } = require('../db');
 
+// Get cart by user ID
 const getCartByUserId = async (userId) => {
     const query = `SELECT * FROM public.cart WHERE user_id = $1`;
     try {
@@ -11,6 +12,7 @@ const getCartByUserId = async (userId) => {
     }
 };
 
+// Create a new cart for a user
 const createCart = async (userId) => {
     const query = `INSERT INTO public.cart (user_id) VALUES ($1) RETURNING *`;
     try {
@@ -22,7 +24,8 @@ const createCart = async (userId) => {
     }
 };
 
-async function addItemToCart(userId, productId, quantity) {
+// Add item to cart
+const addItemToCart = async (userId, productId, quantity) => {
     const cart = await getCartByUserId(userId);
     let cartId;
 
@@ -33,18 +36,19 @@ async function addItemToCart(userId, productId, quantity) {
         cartId = cart.cart_id;
     }
 
-    const res = await client.query(
-        `INSERT INTO public.cart_items (cart_id, product_id, quantity)
+    const res = await pool.query(
+        `INSERT INTO public.cartitems (cart_id, product_id, quantity)
          VALUES ($1, $2, $3)
          ON CONFLICT (cart_id, product_id)
-         DO UPDATE SET quantity = public.cart_items.quantity + EXCLUDED.quantity
+         DO UPDATE SET quantity = public.cartitems.quantity + EXCLUDED.quantity
          RETURNING *`,
         [cartId, productId, quantity]
     );
 
     return res.rows[0];
-}
+};
 
+// Remove item from cart
 const removeItemFromCart = async (userId, productId) => {
     const query = `
         DELETE FROM public.cartitems
@@ -58,6 +62,7 @@ const removeItemFromCart = async (userId, productId) => {
     }
 };
 
+// Clear cart
 const clearCart = async (userId) => {
     const query = `DELETE FROM public.cartitems WHERE cart_id = (SELECT cart_id FROM public.cart WHERE user_id = $1)`;
     try {
@@ -68,10 +73,9 @@ const clearCart = async (userId) => {
     }
 };
 
-
-async function checkoutCart(cartId) {
+// Checkout cart
+const checkoutCart = async (cartId) => {
     try {
-        // Fetch the user_id from the cart table
         const userRes = await pool.query('SELECT user_id FROM public.cart WHERE cart_id = $1', [cartId]);
         const user = userRes.rows[0];
 
@@ -81,7 +85,6 @@ async function checkoutCart(cartId) {
 
         const userId = user.user_id;
 
-        // Fetch cart items
         const cartItemsRes = await pool.query(
             'SELECT * FROM public.cartitems WHERE cart_id = $1',
             [cartId]
@@ -92,17 +95,14 @@ async function checkoutCart(cartId) {
             throw new Error('Cart is empty');
         }
 
-        // Calculate total amount
         const totalAmount = cartItems.reduce((sum, item) => sum + item.total_price, 0);
 
-        // Fetch user's addresses from users table
         const userAddressRes = await pool.query(
             'SELECT address AS shipping_address, address AS billing_address FROM public.users WHERE user_id = $1',
             [userId]
         );
         const userAddress = userAddressRes.rows[0];
 
-        // Create order
         const orderRes = await pool.query(
             `INSERT INTO public.orders (user_id, status, total_amount, shipping_address, billing_address)
              VALUES ($1, 'Pending', $2, $3, $4) RETURNING *`,
@@ -110,7 +110,6 @@ async function checkoutCart(cartId) {
         );
         const order = orderRes.rows[0];
 
-        // Add items to order items
         for (const item of cartItems) {
             await pool.query(
                 `INSERT INTO public.orderitems (order_id, product_id, quantity, price)
@@ -119,7 +118,6 @@ async function checkoutCart(cartId) {
             );
         }
 
-        // Clear cart
         await pool.query('DELETE FROM public.cartitems WHERE cart_id = $1', [cartId]);
 
         return order;
@@ -127,8 +125,7 @@ async function checkoutCart(cartId) {
         console.error('Error during checkout', err);
         throw err;
     }
-}
-
+};
 
 module.exports = {
     getCartByUserId,
@@ -138,4 +135,3 @@ module.exports = {
     clearCart,
     checkoutCart
 };
-
