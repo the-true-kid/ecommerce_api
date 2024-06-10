@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const flash = require('connect-flash');
 const passport = require('passport');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 const { setupPassport } = require('./queries/authQueries');  // Adjust path as needed
 
 const app = express();
@@ -22,6 +24,35 @@ app.use(session({
 app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Swagger definition
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'Your API Title',
+    version: '1.0.0',
+    description: 'API documentation',
+  },
+  servers: [
+    {
+      url: 'http://localhost:3000',
+      description: 'Development server',
+    },
+  ],
+};
+
+// Options for swagger-jsdoc
+const options = {
+  swaggerDefinition,
+  // Paths to files containing OpenAPI definitions
+  apis: ['./routes/*.js'], // Adjust the path according to your project structure
+};
+
+// Initialize swagger-jsdoc
+const specs = swaggerJsdoc(options);
+
+// Use swagger-ui-express for your swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Routes setup
 app.use('/api/users', require('./routes/userRoutes'));

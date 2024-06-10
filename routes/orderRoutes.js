@@ -6,7 +6,34 @@ const { passport } = require('../queries/authQueries');
 // Middleware to ensure the user is authenticated
 router.use(passport.authenticate('session'));
 
-// GET /orders - Get all orders for the logged-in user
+/**
+ * @swagger
+ * /api/orders:
+ *   get:
+ *     summary: Get all orders for the logged-in user
+ *     responses:
+ *       200:
+ *         description: A list of orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   order_id:
+ *                     type: integer
+ *                   user_id:
+ *                     type: integer
+ *                   total_price:
+ *                     type: number
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                   updated_at:
+ *                     type: string
+ *                     format: date-time
+ */
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.user_id; // Get user ID from the session
@@ -19,7 +46,43 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /orders/:orderId - Get details of a specific order
+/**
+ * @swagger
+ * /api/orders/{orderId}:
+ *   get:
+ *     summary: Get details of a specific order
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The order ID
+ *     responses:
+ *       200:
+ *         description: Order details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 order_id:
+ *                   type: integer
+ *                 user_id:
+ *                   type: integer
+ *                 total_price:
+ *                   type: number
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Failed to retrieve order details
+ */
 router.get('/:orderId', async (req, res) => {
     try {
         const userId = req.user.user_id; // Get user ID from the session

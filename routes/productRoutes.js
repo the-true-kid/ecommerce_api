@@ -1,7 +1,35 @@
 const express = require('express');
 const router = express.Router();
-const { getProductById, getProductsByCategory, getAllProducts } = require('../queries/productQueries');  
+const { getProductById, getProductsByCategory, getAllProducts } = require('../queries/productQueries');
 
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Retrieve a list of products
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Category to filter products by
+ *     responses:
+ *       200:
+ *         description: A list of products
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   product_id:
+ *                     type: integer
+ *                   name:
+ *                     type: string
+ *                   price:
+ *                     type: number
+ */
 router.get('/', async (req, res) => {
     const { category } = req.query;
     try {
@@ -18,6 +46,37 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/products/{productId}:
+ *   get:
+ *     summary: Retrieve a single product by ID
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The product ID
+ *     responses:
+ *       200:
+ *         description: A single product
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 product_id:
+ *                   type: integer
+ *                 name:
+ *                   type: string
+ *                 price:
+ *                   type: number
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Failed to retrieve product
+ */
 router.get('/:productId', async (req, res) => {
     try {
         const product = await getProductById(req.params.productId);

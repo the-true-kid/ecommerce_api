@@ -5,6 +5,33 @@ const { passport } = require('../queries/authQueries');
 
 router.use(passport.authenticate('session'));
 
+/**
+ * @swagger
+ * /api/cart:
+ *   get:
+ *     summary: Get the cart for the logged-in user
+ *     responses:
+ *       200:
+ *         description: The user's cart
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cart_id:
+ *                   type: integer
+ *                 user_id:
+ *                   type: integer
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       product_id:
+ *                         type: integer
+ *                       quantity:
+ *                         type: integer
+ */
 router.get('/', async (req, res) => {
     try {
         let cart = await getCartByUserId(req.user.user_id);
@@ -17,6 +44,26 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/cart:
+ *   post:
+ *     summary: Add an item to the cart
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               product_id:
+ *                 type: integer
+ *               quantity:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Item added to cart
+ */
 router.post('/', async (req, res) => {
     const { productId, quantity } = req.body;
     try {
@@ -27,6 +74,24 @@ router.post('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/cart:
+ *   delete:
+ *     summary: Remove an item from the cart
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               product_id:
+ *                 type: integer
+ *     responses:
+ *       204:
+ *         description: Item removed from cart
+ */
 router.delete('/', async (req, res) => {
     const { productId } = req.body;
     try {
@@ -37,6 +102,15 @@ router.delete('/', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/cart/clear:
+ *   delete:
+ *     summary: Clear the cart
+ *     responses:
+ *       204:
+ *         description: Cart cleared
+ */
 router.delete('/clear', async (req, res) => {
     try {
         await clearCart(req.user.user_id);
@@ -46,6 +120,31 @@ router.delete('/clear', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/cart/{cartId}/checkout:
+ *   post:
+ *     summary: Checkout the cart
+ *     parameters:
+ *       - in: path
+ *         name: cartId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The cart ID
+ *     responses:
+ *       200:
+ *         description: Checkout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 details:
+ *                   type: object
+ */
 router.post('/:cartId/checkout', async (req, res) => {
     const { cartId } = req.params;
     try {
